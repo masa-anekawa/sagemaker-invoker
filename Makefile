@@ -4,7 +4,7 @@ include .env
 export $(shell sed 's/=.*//' .env)
 
 # 設定項目
-TAG := $(shell tar c lambda_function.py lambda_function_test.py Dockerfile Pipfile.lock | md5sum | awk '{print $$1}')
+TAG := $(shell git rev-parse HEAD)
 
 # ECR リポジトリのURLを取得
 REPO_URL := $(shell aws ecr describe-repositories --repository-names $(REPO_NAME) --profile $(AWS_PROFILE) --region $(AWS_REGION) --query 'repositories[0].repositoryUri' --output text)
