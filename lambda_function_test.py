@@ -1,4 +1,3 @@
-from lambda_function import _handle_message
 from unittest.mock import patch, MagicMock
 import unittest
 import pandas as pd
@@ -21,7 +20,7 @@ class TestHandleMessage(unittest.TestCase):
         mock_predict_async.return_value.failure_path = "failure_path"
 
         # Act
-        response = _handle_message(mock_message)
+        response = lambda_function._handle_message(mock_message)
 
         # Assert
         self.assertEqual(response['statusCode'], 200)
@@ -40,12 +39,23 @@ class TestHandleMessage(unittest.TestCase):
         mock_predict_async.side_effect = Exception("test exception")
 
         # Act
-        response = _handle_message(mock_message)
+        response = lambda_function._handle_message(mock_message)
 
         # Assert
         self.assertEqual(response['statusCode'], 500)
         self.assertEqual(response['body'],
                          "Failed to invoke Sagemaker Endpoint")
+
+    @patch('lambda_function._handle_message')
+    def test_lambda_handler_direct_invocation_success(self, mock_handle_message):
+        # Arrange
+        mock_event = { "message": "test message" }
+        mock_context = {}
+        # Act
+        response = lambda_function.lambda_handler(mock_event, mock_context)
+        # Assert
+        self.assertEqual(response['statusCode'], 200)
+        self.assertEqual(response['body'], "invoked lambda directly")
 
 
 if __name__ == '__main__':

@@ -38,6 +38,12 @@ sqs = boto3.client('sqs', region_name=region)
 
 
 def lambda_handler(event, context):
+    if 'Records' in event:
+        return sqs_handler(event, context)
+    else:
+        return direct_handler(event, context)
+
+def sqs_handler(event, context):
     # Get SQS queue message from the event
     receipt_handle = event['Records'][0]['receiptHandle']
     message = event['Records'][0]['body']
@@ -55,6 +61,13 @@ def lambda_handler(event, context):
     else:
         logging.error(f"Failed to process message {message_id}")
     return response
+
+def direct_handler(event, context):
+    return {
+        "statusCode": 200,
+        "body": "invoked lambda directly",
+        "event": event,
+    }
 
 
 def _handle_message(message: str) -> dict:
@@ -113,7 +126,7 @@ def _prepare_payload(input: str) -> dict:
     return payload
 
 
-def _upload_payload_to_s3_as_json(payload, bucket, prefix) -> str:
+def _upload_payload_to_s3_as_json(payload, bucket, prefix, message_id) -> str:
     """Uploads a payload to S3 as JSON.
 
     Args:
@@ -123,9 +136,9 @@ def _upload_payload_to_s3_as_json(payload, bucket, prefix) -> str:
 
     Returns:
         s3_url (str): The S3 URL of the uploaded file.
-            filename is "payload" appended by the current formatted timestamp plus ".json".
+            filename is the message_id.
     """
-    filename = f"payload-{datetime.now().strftime('%Y%m%d%H%M%S')}.json"
+    filename = f"{message_id}.json"
     s3_url = f"s3://{bucket}/{prefix}/{filename}"
     s3.put_object(
         Body=json.dumps(payload),
