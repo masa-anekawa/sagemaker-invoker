@@ -1,10 +1,9 @@
 # AWS ECR Makefile Boilerplate
 
+include .env
+export $(shell sed 's/=.*//' .env)
+
 # 設定項目
-AWS_PROFILE := default
-AWS_REGION := ap-northeast-1
-REPO_NAME := yui-gpt-sagemaker-invoker
-IMAGE_NAME := yui-gpt-sagemaker-invoker
 TAG := $(shell tar c lambda_function.py lambda_function_test.py Dockerfile Pipfile.lock | md5sum | awk '{print $$1}')
 
 # ECR リポジトリのURLを取得
