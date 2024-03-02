@@ -1,0 +1,23 @@
+[tool.poetry]
+name = "sagemaker-invoker"
+version = "0.1.0"
+description = ""
+authors = ["Masayuki Anekawa <anekawamasayuki@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+boto3 = "*"
+sagemaker = "*"
+
+[tool.poetry.dev-dependencies]
+pytest = "*"
+pytest-watch = "*"
+
+[tool.poetry.scripts]
+test = "pytest"
+test-watch = "ptw"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"

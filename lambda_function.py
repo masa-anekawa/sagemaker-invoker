@@ -1,12 +1,12 @@
 import os
 import boto3
-from datetime import datetime
 import json
 import logging
-from io import BytesIO
 import sagemaker
 from sagemaker.predictor import Predictor
 from sagemaker.predictor_async import AsyncPredictor
+
+from src.types import RequestEvent, Payload, ResponseEvent, HandleMessageResponse
 
 
 # 環境変数の設定
@@ -52,7 +52,7 @@ def sqs_handler(event, context):
 
     response = _handle_message(message)
 
-    if response['statusCode'] == 200:
+    if response.statusCode == 200:
         # delete the message from the queue
         sqs.delete_message(
             QueueUrl=QUEUE_URL,
@@ -62,15 +62,17 @@ def sqs_handler(event, context):
         logging.error(f"Failed to process message {message_id}")
     return response
 
-def direct_handler(event, context):
-    return {
-        "statusCode": 200,
-        "body": "invoked lambda directly",
-        "event": event,
-    }
+def direct_handler(event: RequestEvent, context) -> Payload:
+    message = event['message']
+    response = _handle_message(message)
+    return Payload(
+        statusCode=response.statusCode,
+        body=response.body,
+        event=event
+    )
 
 
-def _handle_message(message: str) -> dict:
+def _handle_message(message: str) -> HandleMessageResponse:
     # Invoke Sagemaker Endpoint with the message
     payload = _prepare_payload(message)
     s3_url = _upload_payload_to_s3_as_json(payload, sagemaker_bucket, PREFIX)
@@ -85,18 +87,18 @@ def _handle_message(message: str) -> dict:
             },
         )
         logging.info(f"Invoked Sagemaker Endpoint with message")
-        return {
-            "statusCode": 200,
-            "body": "success",
-            "output_path": response.output_path,
-            "failure_path": response.failure_path,
-        }
+        return HandleMessageResponse(
+            statusCode=200,
+            body="success",
+            output_path=response.output_path,
+            failure_path=response.failure_path,
+        )
     except Exception as e:
         logging.error(f"Failed to invoke Sagemaker Endpoint: {e}")
-        return {
-            "statusCode": 500,
-            "body": "Failed to invoke Sagemaker Endpoint"
-        }
+        return HandleMessageResponse(
+            statusCode=500,
+            body="Failed to invoke Sagemaker Endpoint"
+        )
 
 
 def _prepare_payload(input: str) -> dict:

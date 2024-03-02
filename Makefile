@@ -9,10 +9,23 @@ TAG := $(shell git rev-parse HEAD)
 # ECR リポジトリのURLを取得
 REPO_URL := $(shell aws ecr describe-repositories --repository-names $(REPO_NAME) --profile $(AWS_PROFILE) --region $(AWS_REGION) --query 'repositories[0].repositoryUri' --output text)
 
+# Install python dependencies via poetry
+.PHONY: install
+install:
+	poetry install --no-root
+
+.PHONY: test
+test: install
+	poetry run python -m pytest
+
+# requirements.txtを生成
+requirements.txt: pyproject.toml
+	poetry export -f requirements.txt --output requirements.txt
+
 # Dockerイメージをビルド
 .PHONY: build
-build: test
-	docker build -t $(IMAGE_NAME):$(TAG) .
+build: test requirements.txt
+	docker build --platform linux/amd64 -t $(IMAGE_NAME):$(TAG) .
 
 # AWS ECRへのログイン
 .PHONY: login
@@ -30,7 +43,3 @@ push: build login
 clean:
 	docker rmi -f $(IMAGE_NAME):$(TAG)
 	docker rmi -f $(REPO_URL):$(TAG)
-
-.PHONY: test
-test:
-	pipenv run python -m pytest

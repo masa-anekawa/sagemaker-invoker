@@ -1,0 +1,2 @@
+# Sagemaker Invoker
+This is a simple sagemaker invoker that can be used to invoke sagemaker endpoints. It is a simple wrapper around the boto3 sagemaker client. It is designed to be used in a lambda function to invoke sagemaker endpoints.
