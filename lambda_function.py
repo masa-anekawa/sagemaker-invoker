@@ -5,6 +5,7 @@ import logging
 import sagemaker
 from sagemaker.predictor import Predictor
 from sagemaker.predictor_async import AsyncPredictor
+import uuid
 
 from src.types import RequestEvent, Payload, ResponseEvent, HandleMessageResponse
 
@@ -73,9 +74,12 @@ def direct_handler(event: RequestEvent, context) -> Payload:
 
 
 def _handle_message(message: str) -> HandleMessageResponse:
+    # generate message id by UUID version 7
+    message_id = str(uuid.uuid4())
+
     # Invoke Sagemaker Endpoint with the message
     payload = _prepare_payload(message)
-    s3_url = _upload_payload_to_s3_as_json(payload, sagemaker_bucket, PREFIX)
+    s3_url = _upload_payload_to_s3_as_json(payload, sagemaker_bucket, PREFIX, message_id)
 
     try:
         response = async_predictor.predict_async(
@@ -86,10 +90,11 @@ def _handle_message(message: str) -> HandleMessageResponse:
                 "Accept": "application/json",
             },
         )
-        logging.info(f"Invoked Sagemaker Endpoint with message")
+        logging.info(f"Invoked Sagemaker Endpoint with message_id: {message_id}")
         return HandleMessageResponse(
             statusCode=200,
             body="success",
+            message_id=message_id,
             output_path=response.output_path,
             failure_path=response.failure_path,
         )

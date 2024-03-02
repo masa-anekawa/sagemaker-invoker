@@ -27,3 +27,4 @@ class HandleMessageResponse:
     body: str
     output_path: str | None = None
     failure_path: str | None = None
+    message_id: str | None = None
