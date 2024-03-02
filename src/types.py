@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import Optional, TypedDict
 
 
-class RequestEvent(TypedDict, total=False):
+class RequestEventDict(TypedDict, total=False):
     message: str
     token: Optional[str]
 
@@ -11,11 +11,10 @@ class RequestEvent(TypedDict, total=False):
 class Payload:
     statusCode: int
     body: str
-    event: RequestEvent
+    event: RequestEventDict
 
 
-@dataclass(frozen=True)
-class ResponseEvent:
+class ResponseEventDict(TypedDict):
     StatusCode: int
     ExecutedVersion: str
     Payload: Payload

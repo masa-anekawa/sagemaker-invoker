@@ -1,5 +1,6 @@
 import os
 import boto3
+import dataclasses
 import json
 import logging
 import sagemaker
@@ -7,7 +8,7 @@ from sagemaker.predictor import Predictor
 from sagemaker.predictor_async import AsyncPredictor
 import uuid
 
-from src.types import RequestEvent, Payload, ResponseEvent, HandleMessageResponse
+from src.types import RequestEventDict, Payload, ResponseEventDict, HandleMessageResponse
 
 
 # 環境変数の設定
@@ -38,11 +39,12 @@ s3 = boto3.client('s3', region_name=region)
 sqs = boto3.client('sqs', region_name=region)
 
 
-def lambda_handler(event, context):
+def lambda_handler(event, context) -> ResponseEventDict:
     if 'Records' in event:
-        return sqs_handler(event, context)
+        payload: Payload = sqs_handler(event, context)
     else:
-        return direct_handler(event, context)
+        payload: Payload = direct_handler(event, context)
+    return dataclasses.asdict(payload)
 
 def sqs_handler(event, context):
     # Get SQS queue message from the event
@@ -61,9 +63,13 @@ def sqs_handler(event, context):
         )
     else:
         logging.error(f"Failed to process message {message_id}")
-    return response
+    return Payload(
+        statusCode=response.statusCode,
+        body=response.body,
+        event=event
+    )
 
-def direct_handler(event: RequestEvent, context) -> Payload:
+def direct_handler(event: RequestEventDict, context) -> Payload:
     message = event['message']
     response = _handle_message(message)
     return Payload(
