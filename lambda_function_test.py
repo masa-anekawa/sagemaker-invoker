@@ -1,8 +1,7 @@
-from unittest.mock import patch, MagicMock
 import unittest
 from unittest.mock import patch, ANY, call
 
-from src.types import HandleMessageResponse, RequestEventDict, ResponseEventDict, Payload
+from src.types import HandleMessageFailure, HandleMessageResponse, RequestEventDict, ResponseEventDict, Payload
 
 import lambda_function
 
@@ -15,7 +14,12 @@ INPUT_MESSAGE = "test message"
 MESSAGE_ID = "test_message_id"
 OUTPUT_PATH = "output_path"
 S3_UPLOADED_URI = "s3://test_bucket/test_key"
-
+HANDLE_MESSAGE_RESPONSE = HandleMessageResponse(
+    body=BODY_SUCCESS,
+    message_id=MESSAGE_ID,
+    output_path=OUTPUT_PATH,
+    failure_path=FAILURE_PATH
+)
 
 class TestHandleMessage(unittest.TestCase):
     @patch('lambda_function._prepare_payload')
@@ -33,7 +37,7 @@ class TestHandleMessage(unittest.TestCase):
         handle_message_response = lambda_function._handle_message(mock_message)
 
         # Assert
-        self.assertEqual(handle_message_response.statusCode, 200)
+        self.assertRaises(AttributeError, lambda: handle_message_response.statusCode)
         self.assertEqual(handle_message_response.body, BODY_SUCCESS)
         self.assertEqual(handle_message_response.output_path, OUTPUT_PATH)
         self.assertEqual(handle_message_response.failure_path, FAILURE_PATH)
@@ -52,7 +56,6 @@ class TestHandleMessage(unittest.TestCase):
         handle_message_response = lambda_function._handle_message(mock_message)
 
         # Assert
-        self.assertEqual(handle_message_response.statusCode, 500)
         self.assertEqual(handle_message_response.body, BODY_FAILURE)
 
     @patch('lambda_function._handle_message')
@@ -60,9 +63,11 @@ class TestHandleMessage(unittest.TestCase):
         # Arrange
         mock_event = RequestEventDict(message=INPUT_MESSAGE)
         mock_context = {}
-        mock_handle_message.return_value = HandleMessageResponse(statusCode=200, body=BODY_SUCCESS)
+        mock_handle_message.return_value = HANDLE_MESSAGE_RESPONSE
+
         # Act
         response = lambda_function.lambda_handler(mock_event, mock_context)
+
         # Assert
         mock_handle_message.assert_called_once_with(INPUT_MESSAGE)
         self.assertEqual(response['statusCode'], 200)
@@ -73,9 +78,11 @@ class TestHandleMessage(unittest.TestCase):
         # Arrange
         mock_event = RequestEventDict(message=INPUT_MESSAGE)
         mock_context = {}
-        mock_handle_message.return_value = HandleMessageResponse(statusCode=500, body=BODY_FAILURE)
+        mock_handle_message.return_value = HandleMessageFailure(BODY_FAILURE)
+
         # Act
         response = lambda_function.lambda_handler(mock_event, mock_context)
+
         # Assert
         mock_handle_message.assert_called_once_with(INPUT_MESSAGE)
         self.assertEqual(response['statusCode'], 500)
@@ -86,9 +93,11 @@ class TestHandleMessage(unittest.TestCase):
         # Arrange
         mock_event = RequestEventDict(message=INPUT_MESSAGE)
         mock_context = {}
-        mock_handle_message.return_value = HandleMessageResponse(statusCode=200, body=BODY_SUCCESS, message_id=MESSAGE_ID)
+        mock_handle_message.return_value = HANDLE_MESSAGE_RESPONSE
+
         # Act
         response = lambda_function.lambda_handler(mock_event, mock_context)
+
         # Assert
         self.assertEqual(response, {
             "statusCode": 200,
@@ -96,7 +105,7 @@ class TestHandleMessage(unittest.TestCase):
             "event": {
                 "message": INPUT_MESSAGE
             },
-            "message_id": MESSAGE_ID
+            "message_id": MESSAGE_ID,
         })
 
 if __name__ == '__main__':

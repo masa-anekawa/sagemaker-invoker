@@ -8,7 +8,7 @@ from sagemaker.predictor import Predictor
 from sagemaker.predictor_async import AsyncPredictor
 import uuid
 
-from src.types import RequestEventDict, Payload, ResponseEventDict, HandleMessageResponse
+from src.types import HandleMessageFailure, RequestEventDict, Payload, ResponseEventDict, HandleMessageResponse
 
 
 # 環境変数の設定
@@ -50,37 +50,51 @@ def sqs_handler(event, context):
     # Get SQS queue message from the event
     receipt_handle = event['Records'][0]['receiptHandle']
     message = event['Records'][0]['body']
-    message_id = event['Records'][0]['messageId']
-    logging.info(f"Received message {message_id}")
+    sqs_message_id = event['Records'][0]['messageId']
+    logging.info(f"Received message {sqs_message_id}")
 
     response = _handle_message(message)
 
-    if response.statusCode == 200:
+    if isinstance(response, HandleMessageResponse):
         # delete the message from the queue
         sqs.delete_message(
             QueueUrl=QUEUE_URL,
             ReceiptHandle=receipt_handle
         )
+        logging.info(f"Processed message {sqs_message_id}")
+        return Payload(
+            statusCode=200,
+            body=response.body,
+            event=event
+        )
     else:
-        logging.error(f"Failed to process message {message_id}")
-    return Payload(
-        statusCode=response.statusCode,
-        body=response.body,
-        event=event
-    )
+        logging.error(f"Failed to process message {sqs_message_id}")
+        return Payload(
+            statusCode=500,
+            body=response.body,
+            event=event
+        )
 
 def direct_handler(event: RequestEventDict, context) -> Payload:
     message = event['message']
     response = _handle_message(message)
-    return Payload(
-        statusCode=response.statusCode,
-        body=response.body,
-        event=event,
-        message_id=response.message_id
-    )
+    if isinstance(response, HandleMessageResponse):
+        return Payload(
+            statusCode=200,
+            body=response.body,
+            event=event,
+            message_id=response.message_id
+        )
+    else:
+        return Payload(
+            statusCode=500,
+            body=response.body,
+            event=event
+        )
 
 
-def _handle_message(message: str) -> HandleMessageResponse:
+
+def _handle_message(message: str) -> HandleMessageResponse | HandleMessageFailure:
     # generate message id by UUID version 7
     message_id = str(uuid.uuid4())
 
@@ -99,7 +113,6 @@ def _handle_message(message: str) -> HandleMessageResponse:
         )
         logging.info(f"Invoked Sagemaker Endpoint with message_id: {message_id}")
         return HandleMessageResponse(
-            statusCode=200,
             body="success",
             message_id=message_id,
             output_path=response.output_path,
@@ -107,10 +120,7 @@ def _handle_message(message: str) -> HandleMessageResponse:
         )
     except Exception as e:
         logging.error(f"Failed to invoke Sagemaker Endpoint: {e}")
-        return HandleMessageResponse(
-            statusCode=500,
-            body="Failed to invoke Sagemaker Endpoint"
-        )
+        return HandleMessageFailure("Failed to invoke Sagemaker Endpoint")
 
 
 def _prepare_payload(input: str) -> dict:
