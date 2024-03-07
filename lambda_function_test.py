@@ -77,7 +77,7 @@ class TestHandleMessage(unittest.TestCase):
         # Arrange
         mock_event = RequestEventDict(message="test message")
         mock_context = {}
-        mock_handle_message.return_value = HandleMessageResponse(statusCode=200, body="success")
+        mock_handle_message.return_value = HandleMessageResponse(statusCode=200, body="success", message_id="test_message_id")
         # Act
         response = lambda_function.lambda_handler(mock_event, mock_context)
         # Assert
@@ -86,7 +86,8 @@ class TestHandleMessage(unittest.TestCase):
             "body": "success",
             "event": {
                 "message": "test message"
-            }
+            },
+            "message_id": "test_message_id"
         })
 
 if __name__ == '__main__':

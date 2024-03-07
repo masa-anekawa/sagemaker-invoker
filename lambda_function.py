@@ -75,7 +75,8 @@ def direct_handler(event: RequestEventDict, context) -> Payload:
     return Payload(
         statusCode=response.statusCode,
         body=response.body,
-        event=event
+        event=event,
+        message_id=response.message_id
     )
 
 
